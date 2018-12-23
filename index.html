@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Document</title>
+  <link rel="stylesheet" href="./style.css">
+  <script
+  src="https://code.jquery.com/jquery-3.3.1.min.js"
+  integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8="
+  crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="main">
+    <div>
+      <h2>タイピングゲーム</h2>
+    </div>
+    <div id="content"> 
+      <p id="start-message">「スペースキー」を押すとスタートします</p>
+      <p id="yomi">よみ</p>
+      <div id="mondai">
+        <p id="char-1" class="text default">a</p>
+        <p id="char-2" class="text default">b</p>
+        <p id="char-3" class="text default">c</p>
+      </div>
+      <div id="finish-panel" class="hidden">
+        <p>終了しました。</p>
+        <p id="correct-message"></p>
+        <p id="mistake-message"></p>
+        <p id="time-message"></p>
+        <button type="button" id="start-button">やり直す</button>
+      </div>
+    </div>
+
+    <div id="tool">
+      <select name="" id="count-select">
+        <option value="3">出題数: 3問</option>
+        <option value="5">出題数: 5問</option>
+        <option value="10">出題数: 10問</option>
+      </select>
+    </div>
+  </div>
+  <script>
+    $(function() {
+      const SPACE_KEYCODE = 32;
+
+      // jQueryオブジェクトを変数に代入
+      const $yomi           = $('#yomi');
+      const $mondai         = $('#mondai');
+      const $finishPanel    = $('#finish-panel');
+      const $countSelect    = $('#count-select');
+      const $correctMessage = $('#correct-message');
+      const $mistakeMessage = $('#mistake-message');
+      const $timeMessage    = $('#time-message');
+      const $startMessage    = $('#start-message');
+
+      // 問題用の変数の初期化
+      let charIndex      = 1;
+      let maxLength      = 3;
+      let questionNumber = 1;
+      let questionLimit  = 3;
+      let doneQuestions  = {};
+      let typingCount    = 0;
+      let correctCount   = 0;
+      let mistakeCount   = 0;
+      let startGame      = false;
+      let startTime      = 0;
+
+      // 問題
+      const MONDAI_LIST = [
+        {yomi: 'ごはん', text: 'gohan'},
+        {yomi: 'おすし', text: 'osushi'},
+        {yomi: 'サイフ', text: 'saifu'},
+        {yomi: 'バナナ', text: 'banana'},
+        {yomi: 'くつした', text: 'kutsushita'},
+        {yomi:'なべ', text:'nabe'},
+        {yomi:'あし', text:'ashi'},
+        {yomi:'パソコン', text:'pasokon'},
+        {yomi:'けいたい', text:'keitai'},
+        {yomi:'ふとん', text:'futon'},
+      ];
+
+      $yomi.hide();
+      $mondai.hide();
+      changeQuestionWord(getQuestionNum());
+
+      $countSelect.change(function(e) {
+        questionLimit = Number($countSelect.val());
+        doneQuestions = {};
+        changeQuestionWord(getQuestionNum());
+      });
+
+      $('#start-button').click(function(e) {
+        init();
+      });
+
+      $(document).on('keypress', function(e) {
+        if (! startGame && e.keyCode === SPACE_KEYCODE) {
+          $startMessage.hide();
+          $countSelect.hide();
+          $yomi.show();
+          $mondai.show();
+          startGame = true;
+          startTime = performance.now();
+          return;
+        } else if (! startGame) {
+          return;
+        }
+        
+        typingCount++;
+
+        const $target = $('#char-' + charIndex);
+        const char    = $target.text()  ;
+        
+        // 入力された文言と現在の位置の文字が一緒だったら
+        if (e.key === char) {
+          // alert('正解！');
+          $target.removeClass('default');
+          $target.addClass('correct');
+          charIndex++;
+          correctCount++;
+        } else {
+          mistakeCount++;
+        }
+
+        if (maxLength < charIndex) {
+          questionNumber++;
+          if (questionLimit < questionNumber) {
+            finish();
+            return;
+          }
+          changeQuestionWord(questionNumber)
+          charIndex = 1; // 初期化
+        }
+      });
+
+      function changeQuestionWord(index) {
+        const word = MONDAI_LIST[index]['text'];
+        maxLength  = word.length;
+        let newHtml = '';
+        for (var i = 0; i < maxLength; i++) {
+          newHtml += '<p id="char-'+(i+1)+'" class="text default">'+word[i]+'</p>';
+        }
+
+        $mondai.html(newHtml);
+        $yomi.text(MONDAI_LIST[index]['yomi']);
+      }
+
+      function finish() {
+        $finishPanel.removeClass('hidden');
+        $yomi.hide();
+        $mondai.hide();
+        $correctMessage.text('正解数: ' + correctCount + '/' + typingCount + '(' + Math.floor(correctCount / typingCount * 100) + '%)');
+        $mistakeMessage.text('間違い数: ' + mistakeCount + '/' + typingCount + '(' + Math.floor(mistakeCount / typingCount * 100) + '%)');
+        const endTime    = performance.now();
+        const typingTime = ((endTime - startTime) / 1000).toFixed(2);
+        $timeMessage.text('かかった時間: ' + typingTime + '秒');
+      }
+
+      function getQuestionNum() {
+        let randomNum = Math.floor(Math.random() * 10);
+
+        while (doneQuestions[randomNum] !== undefined) {
+          randomNum = Math.floor(Math.random() * 10);
+        }
+        doneQuestions[randomNum] = randomNum;
+        return randomNum;
+      }
+
+      function init() {
+        charIndex      = 1;
+        maxLength      = 3;
+        questionNumber = 1;
+        questionLimit  = 3;
+        doneQuestions  = {};
+        typingCount    = 0;
+        correctCount   = 0;
+        mistakeCount   = 0;
+        startGame      = false;
+        startTime      = 0;
+        $countSelect.val(3);
+
+        changeQuestionWord(getQuestionNum());
+
+        $finishPanel.addClass('hidden');
+        $yomi.hide();
+        $mondai.hide();
+        $startMessage.show();
+        $countSelect.show();
+      }
+    });
+  </script>
+</body>
+</html>
